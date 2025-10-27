@@ -22,10 +22,12 @@ contract NFTX is ERC721URIStorage, Ownable, ReentrancyGuard {
     mapping(uint256 => bool) public isMinted;
 
     event NFTAdded(uint256 indexed tokenId, string title, uint256 price);
+    event NFTUpdated(uint256 indexed tokenId, string title, string description, uint256 price, string imageURI);
+    event NFTDeleted(uint256 indexed tokenId);
     event NFTMinted(address indexed user, uint256 indexed tokenId);
     event TransferEnabled(address indexed account);
 
-    constructor() ERC721("NFTX", "NFX") Ownable(msg.sender){}
+    constructor() ERC721("NFTX", "NFX") Ownable(msg.sender) {}
 
     function setTransfersEnabled(bool enabled) external onlyOwner {
         transfersEnabled = enabled;
@@ -48,9 +50,35 @@ contract NFTX is ERC721URIStorage, Ownable, ReentrancyGuard {
         emit NFTAdded(tokenId, title, price);
     }
 
+    function editNFT(
+        uint256 tokenId,
+        string memory newTitle,
+        string memory newDescription,
+        string memory newImageURI,
+        uint256 newPrice,
+        string memory newTokenURI
+    ) external onlyOwner {
+        require(metadataExists[tokenId], "NFT metadata not exists");
+        require(!isMinted[tokenId], "NFT already minted");
+        nftData[tokenId] = NFTData(newTitle, newDescription, newImageURI, newPrice);
+        tokenURIs[tokenId] = newTokenURI;
+
+        emit NFTUpdated(tokenId, newTitle, newDescription, newPrice, newImageURI);
+    }
+
+    function deleteNFT(uint256 tokenId) external onlyOwner {
+        require(metadataExists[tokenId], "NFT metadata not exists");
+        require(!isMinted[tokenId], "NFT already minted");
+        delete nftData[tokenId];
+        delete tokenURIs[tokenId];
+        metadataExists[tokenId] = false;
+
+        emit NFTDeleted(tokenId);
+    }
+
     function mintNFT(uint256 tokenId) external payable nonReentrant {
         require(metadataExists[tokenId], "NFT metadata not exists");
-        require(!isMinted[tokenId],"Already Minted");
+        require(!isMinted[tokenId], "NFT already minted");
         NFTData memory nft = nftData[tokenId];
         require(msg.value >= nft.price, "Insufficient MATIC");
 
